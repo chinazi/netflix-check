@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}管理面板 - Netflix Unblock Checker{% endblock %}
+
+{% block content %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">
+            <i class="fas fa-film text-danger"></i> Netflix Checker
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> 退出
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid mt-3">
+    <div class="row">
+        <!-- 左侧控制面板 -->
+        <div class="col-md-3">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-cog"></i> 控制面板
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-success" onclick="startScheduler()">
+                            <i class="fas fa-play"></i> 启动
+                        </button>
+                        <button class="btn btn-danger" onclick="stopScheduler()">
+                            <i class="fas fa-stop"></i> 停止
+                        </button>
+                        <button class="btn btn-primary" onclick="runNow()">
+                            <i class="fas fa-sync"></i> 立即执行
+                        </button>
+                    </div>
+
+                    <hr>
+
+                    <div class="status-info">
+                        <p class="mb-2">
+                            <strong>调度器状态:</strong>
+                            <span id="schedulerStatus" class="badge bg-secondary">未知</span>
+                        </p>
+                        <p class="mb-0">
+                            <strong>任务状态:</strong>
+                            <span id="taskStatus" class="badge bg-secondary">未知</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快捷操作 -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-bolt"></i> 快捷操作
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="showResults()">
+                            <i class="fas fa-chart-bar"></i> 查看结果
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" onclick="downloadResults()">
+                            <i class="fas fa-download"></i> 下载结果
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="clearLogs()">
+                            <i class="fas fa-eraser"></i> 清空日志
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧内容区 -->
+        <div class="col-md-9">
+            <!-- 标签页 -->
+            <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="logs-tab" data-bs-toggle="tab"
+                            data-bs-target="#logs" type="button">
+                        <i class="fas fa-terminal"></i> 日志输出
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="config-tab" data-bs-toggle="tab"
+                            data-bs-target="#config" type="button">
+                        <i class="fas fa-file-code"></i> 配置文件
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="results-tab" data-bs-toggle="tab"
+                            data-bs-target="#results" type="button">
+                        <i class="fas fa-chart-line"></i> 检测结果
+                    </button>
+                </li>
+            </ul>
+
+            <!-- 标签内容 -->
+            <div class="tab-content border border-top-0 p-3" id="mainTabsContent">
+                <!-- 日志标签 -->
+                <div class="tab-pane fade show active" id="logs" role="tabpanel">
+                    <div class="log-container" id="logContainer">
+                        <pre id="logContent" class="mb-0"></pre>
+                    </div>
+                </div>
+
+                <!-- 配置标签 -->
+                <div class="tab-pane fade" id="config" role="tabpanel">
+                    <div class="mb-3">
+                        <button class="btn btn-primary btn-sm" onclick="saveConfig()">
+                            <i class="fas fa-save"></i> 保存配置
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="loadConfig()">
+                            <i class="fas fa-redo"></i> 重新加载
+                        </button>
+                    </div>
+                    <div class="config-editor">
+                        <textarea id="configEditor" class="form-control font-monospace"
+                                  rows="20" spellcheck="false"></textarea>
+                    </div>
+                </div>
+
+                <!-- 结果标签 -->
+                <div class="tab-pane fade" id="results" role="tabpanel">
+                    <div id="resultsContainer">
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-spinner fa-spin fa-3x mb-3"></i>
+                            <p>加载中...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 结果模态框 -->
+<div class="modal fade" id="resultsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">检测结果详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="resultsModalBody">
+                <!-- 动态内容 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,150 @@
+/* 全局样式 */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f8f9fa;
+}
+
+/* 日志容器 */
+.log-container {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    border-radius: 4px;
+    padding: 15px;
+    height: 500px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.log-container pre {
+    color: inherit;
+    background: transparent;
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* 日志级别颜色 */
+.log-debug { color: #969696; }
+.log-info { color: #4ec9b0; }
+.log-warning { color: #ce9178; }
+.log-error { color: #f48771; }
+.log-critical { color: #f44336; background-color: rgba(244, 67, 54, 0.1); }
+
+/* 配置编辑器 */
+.config-editor textarea {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.config-editor textarea:focus {
+    background-color: #fff;
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* 状态徽章 */
+.status-info .badge {
+    font-size: 12px;
+    padding: 4px 8px;
+}
+
+/* 结果表格 */
+.results-table {
+    font-size: 14px;
+}
+
+.results-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* 代理状态标记 */
+.proxy-status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.proxy-status.full {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.proxy-status.partial {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.proxy-status.blocked {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.proxy-status.failed {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+/* 滚动条样式 */
+.log-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.log-container::-webkit-scrollbar-track {
+    background: #2d2d2d;
+}
+
+.log-container::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+
+.log-container::-webkit-scrollbar-thumb:hover {
+    background: #666;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .log-container {
+        height: 300px;
+        font-size: 12px;
+    }
+
+    .config-editor textarea {
+        font-size: 12px;
+    }
+}
+
+/* 动画效果 */
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 加载动画 */
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(0,0,0,.1);
+    border-radius: 50%;
+    border-top-color: #0d6efd;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}

@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  netflix-checker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - TARGETARCH=${TARGETARCH:-amd64}
+    container_name: netflix-checker
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - ./results:/app/results
+      - ./clash-config:/root/.config/mihomo  # Clash配置目录
+    environment:
+      - CONFIG_FILE=/app/config/config.yaml
+      - TZ=Asia/Shanghai
+    networks:
+      - netflix-checker-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  netflix-checker-net:
+    driver: bridge

@@ -1,0 +1,29 @@
+# Web Framework
+flask==3.0.0
+flask-cors==4.0.0
+flask-socketio==5.3.5
+python-socketio==5.10.0
+
+# Async Support
+gevent==23.9.1
+gevent-websocket==0.10.1
+
+# HTTP & Networking
+requests==2.31.0
+urllib3==2.1.0
+
+# Configuration
+pyyaml==6.0.1
+python-dotenv==1.0.0
+
+# Scheduling
+croniter==2.0.1
+apscheduler==3.10.4
+
+# Utilities
+colorama==0.4.6
+python-dateutil==2.8.2
+
+# Security
+cryptography==41.0.7
+pyjwt==2.8.0
