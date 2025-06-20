@@ -7,7 +7,7 @@ import os
 import sys
 import signal
 import logging
-from flask import Flask
+from flask import Flask, render_template, redirect, url_for
 from flask_cors import CORS
 from flask_socketio import SocketIO
 
@@ -18,7 +18,7 @@ from app.core.config import Config
 from app.core.logger import setup_logger
 from app.core.scheduler import TaskScheduler
 from app.core.clash_manager import LocalClashManager
-from app.api.routes import api_bp
+from app.api.routes import api_bp, set_scheduler
 from app.api.websocket import setup_websocket
 
 # 全局变量
@@ -48,7 +48,18 @@ def create_app():
                                  cors_allowed_origins="*",
                                  async_mode='gevent')
 
-    # 注册蓝图
+    # 注册根路由
+    @flask_app.route('/')
+    def index():
+        """首页 - 重定向到登录页"""
+        return render_template('login.html')
+
+    @flask_app.route('/dashboard')
+    def dashboard():
+        """管理面板页面（不需要后端验证，前端会验证）"""
+        return render_template('dashboard.html')
+
+    # 注册API蓝图
     flask_app.register_blueprint(api_bp, url_prefix='/api')
 
     # 设置WebSocket
@@ -84,6 +95,8 @@ def main():
 
     # 初始化配置
     config = Config()
+    logger.info(config.get('http_server.access_key'))
+
 
     # 初始化Clash管理器并启动Clash
     clash_manager = LocalClashManager(config)
@@ -103,6 +116,9 @@ def main():
     scheduler = TaskScheduler(config)
     scheduler.start()
 
+    # 将调度器实例传递给路由
+    set_scheduler(scheduler)
+
     # 注册信号处理
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
@@ -110,6 +126,7 @@ def main():
     # 启动服务器
     port = config.get('http_server.port', 8080)
     logger.info(f"Web服务器启动在端口 {port}")
+    logger.info(f"请访问: http://localhost:{port}")
 
     socketio.run(app,
                  host='0.0.0.0',

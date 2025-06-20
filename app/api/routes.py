@@ -3,8 +3,7 @@ API路由定义
 """
 
 import os
-import json
-from flask import Blueprint, request, jsonify, render_template, send_file
+from flask import Blueprint, request, jsonify, render_template, send_file, redirect, url_for
 
 from app.core.config import Config
 from app.core.logger import LoggerManager
@@ -12,24 +11,12 @@ from app.core.scheduler import TaskScheduler
 from app.core.netflix_checker import NetflixChecker
 from app.api.auth import require_auth, check_access_key, generate_token
 
+
 api_bp = Blueprint('api', __name__)
 logger = LoggerManager.get_logger()
 
 # 全局调度器实例（在main.py中初始化）
 scheduler = None
-
-
-@api_bp.route('/')
-def index():
-    """首页 - 重定向到登录页"""
-    return render_template('login.html')
-
-
-@api_bp.route('/dashboard')
-@require_auth
-def dashboard():
-    """管理面板页面"""
-    return render_template('dashboard.html')
 
 
 @api_bp.route('/login', methods=['POST'])
@@ -93,8 +80,8 @@ def update_config():
 
         # 如果密钥被隐藏，保留原密钥
         if ('http_server' in new_config and
-                'access_key' in new_config['http_server'] and
-                new_config['http_server']['access_key'] == '******'):
+            'access_key' in new_config['http_server'] and
+            new_config['http_server']['access_key'] == '******'):
             new_config['http_server']['access_key'] = config.get('http_server.access_key')
 
         if config.update_all(new_config):
@@ -263,6 +250,32 @@ def download_results():
     except Exception as e:
         logger.error(f"下载结果错误: {e}")
         return jsonify({'error': '下载失败'}), 500
+
+
+@api_bp.route('/version', methods=['GET'])
+@require_auth
+def get_version():
+    """获取版本信息"""
+    try:
+        version_info = {
+            'app_version': '1.0.0',
+            'mihomo_info': None
+        }
+
+        # 读取mihomo版本信息
+        version_file = '/app/version.txt'
+        if os.path.exists(version_file):
+            with open(version_file, 'r') as f:
+                version_content = f.read().strip()
+                version_info['mihomo_info'] = version_content
+
+        return jsonify({
+            'success': True,
+            'version': version_info
+        })
+    except Exception as e:
+        logger.error(f"获取版本信息错误: {e}")
+        return jsonify({'error': '获取版本信息失败'}), 500
 
 
 # 设置调度器实例

@@ -9,7 +9,9 @@ let statusCheckInterval = null;
 // 初始化
 document.addEventListener('DOMContentLoaded', function() {
     // 检查认证
-    checkAuth();
+    if (!checkAuth()) {
+        return;
+    }
 
     // 初始化WebSocket
     initWebSocket();
@@ -27,8 +29,9 @@ document.addEventListener('DOMContentLoaded', function() {
 function checkAuth() {
     const token = localStorage.getItem('auth_token');
     if (!token) {
+        console.log('没有找到token，跳转到登录页');
         window.location.href = '/';
-        return;
+        return false;
     }
 
     // 设置默认请求头
@@ -36,6 +39,9 @@ function checkAuth() {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
     };
+
+    console.log('认证token已加载');
+    return true;
 }
 
 function logout() {
@@ -43,12 +49,40 @@ function logout() {
     window.location.href = '/';
 }
 
+// 统一的API请求函数
+async function apiRequest(url, options = {}) {
+    try {
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                ...window.authHeaders,
+                ...(options.headers || {})
+            }
+        });
+
+        // 如果是401，自动跳转到登录页
+        if (response.status === 401) {
+            console.log('认证失败，跳转到登录页');
+            localStorage.removeItem('auth_token');
+            window.location.href = '/';
+            return null;
+        }
+
+        return response;
+    } catch (error) {
+        console.error('API请求错误:', error);
+        throw error;
+    }
+}
+
 // WebSocket连接
 function initWebSocket() {
+    const token = localStorage.getItem('auth_token');
+
     socket = io({
         transports: ['websocket'],
         auth: {
-            token: localStorage.getItem('auth_token')
+            token: token
         }
     });
 
@@ -67,6 +101,10 @@ function initWebSocket() {
 
     socket.on('disconnect', function() {
         console.log('WebSocket已断开');
+    });
+
+    socket.on('connect_error', function(error) {
+        console.error('WebSocket连接错误:', error);
     });
 }
 
@@ -118,15 +156,13 @@ function appendLogLine(log) {
 // 配置管理
 async function loadConfig() {
     try {
-        const response = await fetch('/api/config', {
-            headers: window.authHeaders
-        });
+        const response = await apiRequest('/api/config');
 
-        if (response.ok) {
+        if (response && response.ok) {
             const data = await response.json();
             const configEditor = document.getElementById('configEditor');
             configEditor.value = jsyaml.dump(data.config);
-        } else {
+        } else if (response) {
             showAlert('加载配置失败', 'danger');
         }
     } catch (error) {
@@ -149,15 +185,14 @@ async function saveConfig() {
             return;
         }
 
-        const response = await fetch('/api/config', {
+        const response = await apiRequest('/api/config', {
             method: 'POST',
-            headers: window.authHeaders,
             body: JSON.stringify(config)
         });
 
-        if (response.ok) {
+        if (response && response.ok) {
             showAlert('配置已保存', 'success');
-        } else {
+        } else if (response) {
             const data = await response.json();
             showAlert(data.error || '保存失败', 'danger');
         }
@@ -170,15 +205,14 @@ async function saveConfig() {
 // 调度器控制
 async function startScheduler() {
     try {
-        const response = await fetch('/api/scheduler/start', {
-            method: 'POST',
-            headers: window.authHeaders
+        const response = await apiRequest('/api/scheduler/start', {
+            method: 'POST'
         });
 
-        if (response.ok) {
+        if (response && response.ok) {
             showAlert('调度器已启动', 'success');
             updateStatus();
-        } else {
+        } else if (response) {
             const data = await response.json();
             showAlert(data.error || '启动失败', 'danger');
         }
@@ -190,15 +224,14 @@ async function startScheduler() {
 
 async function stopScheduler() {
     try {
-        const response = await fetch('/api/scheduler/stop', {
-            method: 'POST',
-            headers: window.authHeaders
+        const response = await apiRequest('/api/scheduler/stop', {
+            method: 'POST'
         });
 
-        if (response.ok) {
+        if (response && response.ok) {
             showAlert('调度器已停止', 'success');
             updateStatus();
-        } else {
+        } else if (response) {
             const data = await response.json();
             showAlert(data.error || '停止失败', 'danger');
         }
@@ -214,16 +247,15 @@ async function runNow() {
     }
 
     try {
-        const response = await fetch('/api/scheduler/run-now', {
-            method: 'POST',
-            headers: window.authHeaders
+        const response = await apiRequest('/api/scheduler/run-now', {
+            method: 'POST'
         });
 
-        if (response.ok) {
+        if (response && response.ok) {
             showAlert('任务已开始执行，请查看日志', 'info');
             // 切换到日志标签
             document.getElementById('logs-tab').click();
-        } else {
+        } else if (response) {
             const data = await response.json();
             showAlert(data.error || '执行失败', 'danger');
         }
@@ -236,11 +268,9 @@ async function runNow() {
 // 状态更新
 async function updateStatus() {
     try {
-        const response = await fetch('/api/scheduler/status', {
-            headers: window.authHeaders
-        });
+        const response = await apiRequest('/api/scheduler/status');
 
-        if (response.ok) {
+        if (response && response.ok) {
             const data = await response.json();
             const status = data.status;
 
@@ -272,14 +302,12 @@ async function updateStatus() {
 // 结果管理
 async function loadResults() {
     try {
-        const response = await fetch('/api/results', {
-            headers: window.authHeaders
-        });
+        const response = await apiRequest('/api/results');
 
-        if (response.ok) {
+        if (response && response.ok) {
             const data = await response.json();
             displayResults(data.results);
-        } else {
+        } else if (response) {
             showAlert('加载结果失败', 'danger');
         }
     } catch (error) {
@@ -401,28 +429,37 @@ async function showResults() {
 
 async function downloadResults() {
     try {
-        const response = await fetch('/api/results/download', {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-            }
-        });
-
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'netflix_results.json';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        } else {
-            showAlert('下载失败', 'danger');
-        }
+        window.location.href = '/api/results/download';
     } catch (error) {
         console.error('下载结果错误:', error);
         showAlert('下载出错', 'danger');
+    }
+}
+
+async function loadVersionInfo() {
+    try {
+        const response = await apiRequest('/api/version');
+
+        if (response && response.ok) {
+            const data = await response.json();
+            const versionDiv = document.getElementById('versionInfo');
+
+            let html = '<p class="mb-1"><strong>应用版本:</strong> ' + data.version.app_version + '</p>';
+
+            if (data.version.mihomo_info) {
+                const lines = data.version.mihomo_info.split('\n');
+                html += '<p class="mb-0"><strong>Mihomo信息:</strong></p>';
+                html += '<pre class="mb-0 small" style="background: #f8f9fa; padding: 5px;">';
+                lines.forEach(line => {
+                    html += line + '\n';
+                });
+                html += '</pre>';
+            }
+
+            versionDiv.innerHTML = html;
+        }
+    } catch (error) {
+        console.error('加载版本信息错误:', error);
     }
 }
 

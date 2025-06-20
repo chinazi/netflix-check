@@ -53,6 +53,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         if (response.ok && data.success) {
             // 保存token
             localStorage.setItem('auth_token', data.token);
+            console.log('Token已保存:', data.token);
 
             // 显示成功消息
             alertDiv.className = 'alert alert-success mt-3';
@@ -61,7 +62,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 
             // 跳转到面板
             setTimeout(() => {
-                window.location.href = '/api/dashboard';
+            window.location.href = '/dashboard';
             }, 1000);
         } else {
             // 显示错误消息
