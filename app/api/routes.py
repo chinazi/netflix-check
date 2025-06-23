@@ -227,7 +227,7 @@ def get_results():
 def download_results():
     """下载检测结果"""
     try:
-        results_file = "results/netflix_check_results.json"
+        results_file = "/app/results/netflix_check_results.json"
         if os.path.exists(results_file):
             return send_file(
                 results_file,
