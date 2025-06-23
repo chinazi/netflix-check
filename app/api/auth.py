@@ -4,7 +4,7 @@
 import jwt
 import functools
 from datetime import datetime, timedelta, timezone
-from flask import request, jsonify, g
+from flask import request, jsonify
 from app.core.config import Config
 from app.core.logger import LoggerManager
 logger = LoggerManager.get_logger()

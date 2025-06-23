@@ -1,7 +1,10 @@
 # HTTP 服务器配置
 http_server:
   port: 8080
-  access_key: "test123"   # 访问密钥，请修改为安全的密钥
+  access_key: "test123"   # 登录密钥，请修改为安全的密钥
+
+subscription:
+  key: "your-key" #需要设置节点订阅密钥
 
 # 定时任务配置
 schedule:

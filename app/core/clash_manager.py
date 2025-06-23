@@ -71,7 +71,7 @@ class LocalClashManager:
 
     def _merge_configs(self, configs: List[Dict], all_proxies: List[Dict]) -> Dict:
         """合并多个配置文件"""
-        # 基础配置（类似第一个文件的做法）
+        # 基础配置
         merged = {
             'mixed-port': 7890,
             'allow-lan': True,
@@ -80,7 +80,7 @@ class LocalClashManager:
             'log-level': 'info',
             'external-controller': '0.0.0.0:9090',
             'secret': self.config.get('clash.secret', ''),
-            # 添加 DNS 配置（和第一个文件一样）
+            # 添加 DNS 配置
             'dns': {
                 'enable': True,
                 'ipv6': False,
@@ -107,21 +107,25 @@ class LocalClashManager:
         # 设置代理列表
         merged['proxies'] = all_proxies
 
-        # 创建简单的代理组
-        proxy_names = [p['name'] for p in all_proxies]
-        merged['proxy-groups'] = [
-            {
-                'name': 'GLOBAL',
-                'type': 'select',
-                'proxies': ['DIRECT'] + proxy_names
-            }
-        ]
+        # 从第一个配置复制 proxy-groups 和 rules（如果存在）
+        if configs:
+            base_config = configs[0]
 
-        # 如果原配置有规则，可以保留
-        if configs and 'rules' in configs[0]:
-            merged['rules'] = configs[0]['rules']
+            # 保留原有的 proxy-groups
+            if 'proxy-groups' in base_config:
+                merged['proxy-groups'] = base_config['proxy-groups']
+
+            # 保留原有的规则
+            if 'rules' in base_config:
+                merged['rules'] = base_config['rules']
+
+            # 保留其他可能需要的配置
+            for key in ['rule-providers', 'hosts', 'tun', 'profile', 'experimental']:
+                if key in base_config:
+                    merged[key] = base_config[key]
 
         return merged
+
 
     def start_clash(self) -> bool:
         """启动Clash进程"""
@@ -175,36 +179,6 @@ class LocalClashManager:
                     self.logger.error(f"无法读取日志: {e}")
                 return False
 
-
-            # # 启动Clash
-            # cmd = f'nohup /usr/local/bin/clash -d /root/.config/mihomo > clash.log 2>&1 &'
-            # self.logger.info(f"启动Clash: {cmd}")
-            #
-            # self.clash_process = subprocess.Popen(
-            #     cmd,
-            #     shell=True,
-            #     stdout=subprocess.PIPE,
-            #     stderr=subprocess.PIPE,
-            #     universal_newlines=True
-            # )
-            #
-            # # 等待启动
-            # time.sleep(3)
-            #
-            # # 检查是否成功启动
-            # if self.clash_process.poll() is not None:
-            #     stdout, stderr = self.clash_process.communicate()
-            #     self.logger.error(f"Clash启动失败: {stderr}")
-            #     return False
-            #
-            # # 验证API是否可访问
-            # if self._check_clash_running():
-            #     self.logger.info("Clash启动成功")
-            #     return True
-            # else:
-            #     self.logger.error("Clash启动后API不可访问")
-            #     self.stop_clash()
-            #     return False
 
         except Exception as e:
             self.logger.error(f"启动Clash异常: {e}")
@@ -306,7 +280,7 @@ class LocalClashManager:
 
             if response.status_code == 204:
                 self.logger.info(f"成功切换到代理: {proxy_name}")
-                time.sleep(0.5)  # 给代理切换一点时间
+                time.sleep(0.5)
                 return True
             else:
                 self.logger.error(f"切换代理失败: {response.status_code}")

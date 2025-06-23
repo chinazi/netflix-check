@@ -53,10 +53,6 @@ def get_config():
         config = Config()
         config_data = config.get_all()
 
-        # 移除敏感信息
-        # if 'http_server' in config_data and 'access_key' in config_data['http_server']:
-        #     config_data['http_server']['access_key'] = '******'
-
         return jsonify({
             'success': True,
             'config': config_data
@@ -277,3 +273,54 @@ def set_scheduler(sched):
     """设置调度器实例"""
     global scheduler
     scheduler = sched
+
+
+@api_bp.route('/subscription/netflix', methods=['GET'])
+def get_netflix_subscription():
+    """获取Netflix解锁节点订阅"""
+    try:
+        subscription_key = request.args.get('key', '')
+
+        config = Config()
+        correct_key = config.get('subscription.key', '')
+
+        # 如果配置中没有设置密钥，记录警告
+        if not correct_key:
+            logger.warning("订阅密钥未在配置文件中设置")
+            return jsonify({'error': '订阅服务未配置'}), 503
+
+        # 验证密钥
+        if subscription_key != correct_key:
+            logger.warning(f"订阅密钥错误: {subscription_key}")
+            return jsonify({'error': '无效的订阅密钥'}), 401
+
+        # 检查订阅文件是否存在
+        subscription_file = "results/netflix_unlocked_proxies.yaml"
+        if not os.path.exists(subscription_file):
+            logger.info("订阅文件不存在，返回空订阅")
+            # 返回空的代理列表
+            empty_subscription = {
+                'proxies': []
+            }
+            import yaml
+            return yaml.dump(empty_subscription, allow_unicode=True), 200, {
+                'Content-Type': 'text/plain; charset=utf-8',
+                'Content-Disposition': 'inline; filename="netflix_proxies.yaml"'
+            }
+
+        # 读取并返回订阅文件
+        with open(subscription_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        logger.info(f"订阅文件已提供给用户")
+
+        return content, 200, {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Content-Disposition': 'inline; filename="netflix_proxies.yaml"'
+        }
+
+    except Exception as e:
+        logger.error(f"获取订阅错误: {e}")
+        return jsonify({'error': '获取订阅失败'}), 500
+
+

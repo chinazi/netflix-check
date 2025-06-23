@@ -9,7 +9,9 @@ import requests
 import re
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
-from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import yaml
+
 from app.core.logger import LoggerManager
 from app.core.config import Config
 from app.core.clash_manager import LocalClashManager
@@ -320,6 +322,8 @@ class NetflixChecker:
 
             self.logger.info(f"结果已保存到: {self.results_file}")
 
+            self.save_clash_subscription(results)
+
             # 输出汇总信息
             self.logger.info(f"检测完成 - 总计: {summary['total']}, "
                            f"完全解锁: {summary['full']}, "
@@ -336,6 +340,45 @@ class NetflixChecker:
         except Exception as e:
             self.logger.error(f"保存结果失败: {e}")
 
+    def save_clash_subscription(self, results: List[Dict]):
+        """保存完全解锁的节点为Clash订阅格式"""
+        try:
+            # 只筛选完全解锁的节点
+            unlocked_proxies = []
+
+            for result in results:
+                if result['status'] == 'full':  # 只要完全解锁的
+                    # 复制原始代理配置
+                    proxy = result['proxy'].copy()
+
+                    # 修改节点名称，添加 -NF 后缀
+                    original_name = proxy.get('name', '')
+                    proxy['name'] = f"{original_name}-NF"
+
+                    unlocked_proxies.append(proxy)
+
+            if unlocked_proxies:
+                # 创建Clash订阅格式
+                clash_config = {
+                    'proxies': unlocked_proxies
+                }
+
+                # 保存为YAML文件
+                clash_file = os.path.join(self.results_dir, 'netflix_unlocked_proxies.yaml')
+                with open(clash_file, 'w', encoding='utf-8') as f:
+                    yaml.dump(clash_config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+
+                self.logger.info(f"Clash订阅已保存到: {clash_file}")
+                self.logger.info(f"共保存 {len(unlocked_proxies)} 个完全解锁节点")
+            else:
+                self.logger.warning("没有找到完全解锁的节点")
+                # 创建一个空的订阅文件
+                clash_file = os.path.join(self.results_dir, 'netflix_unlocked_proxies.yaml')
+                with open(clash_file, 'w', encoding='utf-8') as f:
+                    yaml.dump({'proxies': []}, f, allow_unicode=True)
+
+        except Exception as e:
+            self.logger.error(f"保存Clash订阅失败: {e}")
     def load_results(self) -> Optional[Dict]:
         """加载上次的检测结果"""
         try:

@@ -429,7 +429,38 @@ async function showResults() {
 
 async function downloadResults() {
     try {
-        window.location.href = '/api/results/download';
+        const response = await apiRequest('/api/results/download');
+
+        if (response && response.ok) {
+            // 获取文件内容
+            const blob = await response.blob();
+
+            // 从响应头获取文件名，或使用默认名称
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = 'netflix_check_results.json';
+            if (contentDisposition) {
+                const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
+                if (matches != null && matches[1]) {
+                    filename = matches[1].replace(/['"]/g, '');
+                }
+            }
+
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+
+            // 清理
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            showAlert('下载成功', 'success');
+        } else if (response) {
+            showAlert('下载失败', 'danger');
+        }
     } catch (error) {
         console.error('下载结果错误:', error);
         showAlert('下载出错', 'danger');
