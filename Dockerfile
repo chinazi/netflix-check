@@ -60,7 +60,5 @@ RUN mkdir -p /app/config /app/logs /app/temp /app/results \
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8080/api/scheduler/status', timeout=5).raise_for_status()" || exit 1
 
 CMD ["python", "-u", "app/main.py"]
