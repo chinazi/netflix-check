@@ -78,12 +78,6 @@ def update_config():
 
         config = Config()
 
-        # 如果密钥被隐藏，保留原密钥
-        if ('http_server' in new_config and
-            'access_key' in new_config['http_server'] and
-            new_config['http_server']['access_key'] == '******'):
-            new_config['http_server']['access_key'] = config.get('http_server.access_key')
-
         if config.update_all(new_config):
             logger.info("配置已更新")
             return jsonify({

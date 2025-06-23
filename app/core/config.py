@@ -3,6 +3,9 @@
 """
 
 import os
+import threading
+import time
+
 import yaml
 import json
 from typing import Any, Dict, Optional
@@ -139,12 +142,17 @@ class Config:
     def update_all(self, new_config: Dict) -> bool:
         """更新整个配置"""
         try:
+            config_copy = new_config.copy()
+
             with self._config_lock:
-                self._config = new_config
-                return self.save_config()
+                self._config = config_copy
+
+            return self.save_config()
+
         except Exception as e:
             print(f"[Config] 更新配置错误: {e}")
             return False
+
 
     def _get_default_config(self) -> Dict:
         """获取默认配置"""
