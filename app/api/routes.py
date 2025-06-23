@@ -54,8 +54,8 @@ def get_config():
         config_data = config.get_all()
 
         # 移除敏感信息
-        if 'http_server' in config_data and 'access_key' in config_data['http_server']:
-            config_data['http_server']['access_key'] = '******'
+        # if 'http_server' in config_data and 'access_key' in config_data['http_server']:
+        #     config_data['http_server']['access_key'] = '******'
 
         return jsonify({
             'success': True,

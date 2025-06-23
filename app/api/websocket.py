@@ -1,12 +1,11 @@
 """
 WebSocket支持 - 实时日志推送
 """
-
 import json
 import time
 import threading
 from flask_socketio import emit, join_room, leave_room
-
+from flask import request  # 添加这个导入
 from app.core.logger import LoggerManager
 
 logger = LoggerManager.get_logger()
@@ -16,12 +15,10 @@ connected_clients = set()
 log_push_thread = None
 stop_log_push = False
 
-
 def setup_websocket(socketio):
     """设置WebSocket事件处理"""
-
     @socketio.on('connect')
-    def handle_connect():
+    def handle_connect(auth=None):  # 添加 auth 参数以兼容 Flask-SocketIO
         """客户端连接"""
         client_id = request.sid
         connected_clients.add(client_id)
@@ -64,7 +61,6 @@ def setup_websocket(socketio):
         leave_room('logs')
         emit('left', {'room': 'logs'})
 
-
 def push_logs(socketio):
     """推送日志到客户端"""
     last_log_count = len(LoggerManager.get_logs())
@@ -79,11 +75,9 @@ def push_logs(socketio):
                 # 获取新日志
                 new_logs = current_logs[last_log_count:]
 
-                # 推送到所有在日志房间的客户端
-                with socketio.app.app_context():
-                    socketio.emit('new_logs', {
-                        'logs': new_logs
-                    }, room='logs')
+                socketio.emit('new_logs', {
+                    'logs': new_logs
+                }, room='logs')
 
                 last_log_count = current_count
 
