@@ -1,6 +1,7 @@
 """
 Netflix检测核心模块
 """
+import logging
 import os
 import json
 import time
@@ -8,6 +9,7 @@ import requests
 import re
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.core.logger import LoggerManager
 from app.core.config import Config
 from app.core.clash_manager import LocalClashManager
@@ -43,7 +45,7 @@ class NetflixChecker:
         self.results_file = "results/netflix_check_results.json"
         os.makedirs(os.path.dirname(self.results_file), exist_ok=True)
 
-    def _test_single_url(self, url: str) -> Tuple[bool, Optional[str], Optional[str]]:
+    def _test_single_url(self, url: str, proxy_name: str) -> Tuple[bool, Optional[str], Optional[str]]:
         """测试单个URL
 
         返回: (是否成功, 地区码, 响应内容)
@@ -52,70 +54,93 @@ class NetflixChecker:
             headers = {
                 'User-Agent': self.user_agent,
                 'Accept-Language': self.accept_language,
+                # 添加防缓存头
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
             }
 
-            response = requests.get(
+            # 创建新的session避免缓存
+            session = requests.Session()
+            session.proxies = self.proxies
+
+            self.logger.debug(f"[{proxy_name}] 正在请求: {url}")
+
+            response = session.get(
                 url,
                 headers=headers,
-                proxies=self.proxies,
                 timeout=self.timeout,
                 allow_redirects=True
             )
+
+            self.logger.debug(f"[{proxy_name}] 响应状态码: {response.status_code}")
+            self.logger.debug(f"[{proxy_name}] 最终URL: {response.url}")
 
             if response.status_code == 200:
                 content = response.text
 
                 # 检查是否被封锁
                 if self.error_msg in content:
+                    self.logger.debug(f"[{proxy_name}] 检测到错误信息: {self.error_msg}")
                     return False, None, content
 
-                # 尝试从重定向URL中提取地区
-                # 参考代码的逻辑：从最终URL中提取地区码
+                # 从最终URL提取地区
                 final_url = response.url
-                match = re.search(r'netflix\.com/([a-z]{2}(?:-[a-z]{2})?)/title', final_url)
+                self.logger.debug(f"[{proxy_name}] 分析最终URL: {final_url}")
+
+                # 尝试从URL路径中提取地区码
+                # 格式: https://www.netflix.com/sg/title/xxx 或 https://www.netflix.com/sg-en/title/xxx
+                match = re.search(r'netflix\.com/([a-z]{2}(?:-[a-z]{2})?)/title', final_url, re.IGNORECASE)
                 if match:
                     region = match.group(1).upper()
-                    # 转换地区码格式 (例如 'sg' -> 'SG')
-                    if '-' in region:
-                        parts = region.split('-')
-                        region = f"{parts[0].upper()}-{parts[1].upper()}"
-                    else:
-                        region = region.upper()
+                    self.logger.debug(f"[{proxy_name}] 从URL提取到地区: {region}")
                 else:
-                    # 如果URL中没有地区信息，尝试从内容中提取
-                    region = self._extract_region_from_content(content)
+                    # 如果URL中没有地区，尝试从内容提取
+                    self.logger.debug(f"[{proxy_name}] URL中未找到地区信息，尝试从内容提取")
+                    region = self._extract_region_from_content(content, proxy_name)
                     if not region:
-                        region = 'US'  # 默认为美国
+                        # 检查是否直接跳转到了主域名
+                        if "www.netflix.com/title" in final_url and "/title" == final_url.split("netflix.com")[1][:6]:
+                            region = 'US'  # 默认为美国
+                            self.logger.debug(f"[{proxy_name}] 使用默认地区: US")
 
+                session.close()
                 return True, region, content
             else:
+                session.close()
                 return False, None, f"HTTP {response.status_code}"
 
         except requests.exceptions.Timeout:
+            self.logger.debug(f"[{proxy_name}] 请求超时")
             return False, None, "Timeout"
-        except requests.exceptions.ConnectionError:
+        except requests.exceptions.ConnectionError as e:
+            self.logger.debug(f"[{proxy_name}] 连接错误: {e}")
             return False, None, "Connection Error"
         except Exception as e:
-            self.logger.error(f"测试URL {url} 时出错: {e}")
+            self.logger.error(f"[{proxy_name}] 测试URL时出错: {e}")
             return False, None, str(e)
 
-    def _extract_region_from_content(self, content: str) -> Optional[str]:
+    def _extract_region_from_content(self, content: str, proxy_name: str) -> Optional[str]:
         """从响应内容中提取地区信息"""
         # 尝试多种模式匹配地区
         patterns = [
-            r'"geoCountry":"([A-Z]{2})"',
-            r'"countryCode":"([A-Z]{2})"',
-            r'data-geo="([A-Z]{2})"',
-            r'"location":"([A-Z]{2})"',
-            r'\"geolocation\"\s*:\s*\"([A-Z]{2})\"',
-            r'window\.netflix\.reactContext\.models\.geo\.country\s*=\s*["\']([A-Z]{2})["\']'
+            (r'"geoCountry":"([A-Z]{2})"', 'geoCountry'),
+            (r'"countryCode":"([A-Z]{2})"', 'countryCode'),
+            (r'data-geo="([A-Z]{2})"', 'data-geo'),
+            (r'"location":"([A-Z]{2})"', 'location'),
+            (r'\"geolocation\"\s*:\s*\"([A-Z]{2})\"', 'geolocation'),
+            (r'window\.netflix\.reactContext\.models\.geo\.country\s*=\s*["\']([A-Z]{2})["\']', 'reactContext')
         ]
 
-        for pattern in patterns:
+        for pattern, name in patterns:
             match = re.search(pattern, content)
             if match:
-                return match.group(1)
+                region = match.group(1)
+                self.logger.debug(f"[{proxy_name}] 从内容提取到地区 ({name}): {region}")
+                return region
 
+        # 记录一小段内容用于调试
+        self.logger.debug(f"[{proxy_name}] 未能从内容提取地区，响应片段: {content[:200]}")
         return None
 
     def check_single_proxy(self, proxy: Dict) -> Dict:
@@ -134,19 +159,29 @@ class NetflixChecker:
 
         try:
             # 切换代理
+            self.logger.debug(f"准备切换到代理: {proxy_name}")
             if not self.clash_manager.switch_proxy(proxy_name):
                 result['details'] = '切换代理失败'
+                self.logger.error(f"切换到代理 {proxy_name} 失败")
                 return result
 
-            # 等待代理切换生效
-            time.sleep(2)
+            # 增加等待时间确保代理切换生效
+            time.sleep(1)
 
+
+            # 验证代理是否真的切换了
+            current_proxy = self.clash_manager.get_current_proxy()
+            self.logger.info(f"当前代理: {current_proxy}")
+
+            current_ip = self.check_current_ip()
+            self.logger.info(f"当前IP: {current_ip}")
             # 测试所有URL
             test_results = []
             regions_found = []
 
-            for url in self.test_urls:
-                success, region, content = self._test_single_url(url)
+            for i, url in enumerate(self.test_urls):
+                self.logger.debug(f"[{proxy_name}] 测试URL {i+1}/{len(self.test_urls)}")
+                success, region, content = self._test_single_url(url, proxy_name)
                 test_results.append({
                     'url': url,
                     'success': success,
@@ -155,15 +190,29 @@ class NetflixChecker:
                 if success and region:
                     regions_found.append(region)
 
+                # 每个URL之间稍微等待一下
+                if i < len(self.test_urls) - 1:
+                    time.sleep(1)
+
+            # 记录测试结果
+            self.logger.debug(f"[{proxy_name}] 测试结果: {test_results}")
+
             # 分析结果
             successful_tests = [t for t in test_results if t['success']]
 
-            # 判断最终状态（参考代码的逻辑）
             if len(successful_tests) == len(self.test_urls):
-                # 所有URL都成功 - 全区解锁
+                # 所有URL都成功 - 完全解锁
                 result['status'] = 'full'
-                # 使用第一个检测到的地区
-                result['region'] = regions_found[0] if regions_found else 'US'
+                # 检查地区是否一致
+                unique_regions = list(set(regions_found))
+                if len(unique_regions) == 1:
+                    result['region'] = unique_regions[0]
+                elif len(unique_regions) > 1:
+                    # 多个地区，可能有问题
+                    result['region'] = regions_found[0]
+                    self.logger.warning(f"[{proxy_name}] 检测到多个地区: {unique_regions}")
+                else:
+                    result['region'] = 'US'
                 result['details'] = f'完全解锁 - {result["region"]}'
             elif successful_tests:
                 # 部分URL成功 - 仅解锁自制剧
@@ -175,15 +224,29 @@ class NetflixChecker:
                 result['status'] = 'blocked'
                 result['details'] = 'Netflix检测到代理或无法访问'
 
-            # 记录详细信息
-            self.logger.debug(f"代理 {proxy_name} 测试结果: {test_results}")
-
         except Exception as e:
             result['status'] = 'failed'
             result['details'] = f'测试错误: {str(e)}'
-            self.logger.error(f"检测代理 {proxy_name} 时出错: {e}")
+            self.logger.error(f"检测代理 {proxy_name} 时出错: {e}", exc_info=True)
 
         return result
+
+    def check_current_ip(self) -> str:
+        """检查当前使用的IP地址"""
+        try:
+            proxies = {
+                'http': f'http://127.0.0.1:7890',
+                'https': f'http://127.0.0.1:7890'
+            }
+            response = requests.get('http://ip-api.com/json',
+                                    proxies=proxies,
+                                    timeout=10)
+            data = response.json()
+            return f"{data.get('query')} ({data.get('country')})"
+        except Exception as e:
+            self.logger.error(f"获取IP失败: {e}")
+            return "Unknown"
+
 
     def check_all_proxies(self, proxies: List[Dict], max_workers: int = 1) -> List[Dict]:
         """检测所有代理"""
@@ -191,7 +254,10 @@ class NetflixChecker:
         total = len(proxies)
         self.logger.info(f"开始检测 {total} 个代理")
 
-        # 单线程顺序检测（因为需要切换代理）
+        # 设置日志级别为DEBUG以获取更多信息
+        self.logger.setLevel(logging.DEBUG)
+
+        # 单线程顺序检测
         for i, proxy in enumerate(proxies):
             proxy_name = proxy.get('name', 'Unknown')
             self.logger.info(f"检测进度: {i + 1}/{total} - {proxy_name}")
@@ -213,7 +279,7 @@ class NetflixChecker:
             log_msg += f" - {result['details']}"
             self.logger.info(log_msg)
 
-            # 定期输出进度
+            # 每10个节点输出进度
             if (i + 1) % 10 == 0:
                 unlocked_count = sum(1 for r in results if r['status'] in ['full', 'partial'])
                 self.logger.info(f"已测试 {i + 1} 个节点，找到 {unlocked_count} 个可解锁节点")

@@ -43,7 +43,12 @@ RUN apk add --no-cache \
     tzdata \
     ca-certificates \
     libstdc++ \
-    gcompat
+    gcompat \
+    curl \
+    jq \
+    bash \
+    net-tools \
+    bind-tools
 
 WORKDIR /app
 

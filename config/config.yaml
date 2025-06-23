@@ -23,7 +23,7 @@ netflix:
   # 测试用的Netflix URL列表
   test_urls:
     - "https://www.netflix.com/title/70143836"  # 绝命毒师
-    - "https://www.netflix.com/title/81280792"  # 示例影片2
+    - "https://www.netflix.com/title/81280792"  # 乐高
 
   error_msg: "Oh no!"              # Netflix显示的错误信息（检测代理）
   timeout: 20                      # 请求超时时间（秒）
