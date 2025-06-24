@@ -71,28 +71,33 @@ class LocalClashManager:
 
     def _merge_configs(self, configs: List[Dict], all_proxies: List[Dict]) -> Dict:
         """合并多个配置文件"""
-        # 基础配置
         merged = {
-            'mixed-port': 7890,
-            'allow-lan': True,
-            'bind-address': '*',
+            'port': 7890,
+            'socks-port': 7891,
             'mode': 'global',
-            'log-level': 'info',
-            'external-controller': '0.0.0.0:9090',
+            'external-controller': '127.0.0.1:9090',
             'secret': self.config.get('clash.secret', ''),
-            # 添加 DNS 配置
             'dns': {
                 'enable': True,
-                'ipv6': False,
                 'enhanced-mode': 'fake-ip',
-                'fake-ip-range': '198.18.0.1/16',
-                'default-nameserver': [
-                    '8.8.8.8',
-                    '1.1.1.1'
-                ],
                 'nameserver': [
-                    'https://dns.google/dns-query',
-                    'https://cloudflare-dns.com/dns-query'
+                    '114.114.114.114',
+                    '223.5.5.5',
+                    '8.8.8.8'
+                ],
+                'fallback': [],
+                'fake-ip-filter': [
+                    '+.stun.*.*',
+                    '+.stun.*.*.*',
+                    '+.stun.*.*.*.*',
+                    '+.stun.*.*.*.*.*',
+                    '*.n.n.srv.nintendo.net',
+                    '+.stun.playstation.net',
+                    'xbox.*.*.microsoft.com',
+                    '*.*.xboxlive.com',
+                    '*.msftncsi.com',
+                    '*.msftconnecttest.com',
+                    'WORKGROUP'
                 ]
             }
         }
