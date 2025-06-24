@@ -275,7 +275,7 @@ def set_scheduler(sched):
     scheduler = sched
 
 
-@api_bp.route('/subscription/netflix', methods=['GET'])
+@api_bp.route('/subscription', methods=['GET'])
 def get_netflix_subscription():
     """获取Netflix解锁节点订阅"""
     try:

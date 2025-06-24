@@ -160,15 +160,13 @@ class NetflixChecker:
         }
 
         try:
-            # 切换代理
             self.logger.debug(f"准备切换到代理: {proxy_name}")
             if not self.clash_manager.switch_proxy(proxy_name):
                 result['details'] = '切换代理失败'
                 self.logger.error(f"切换到代理 {proxy_name} 失败")
                 return result
 
-            # 增加等待时间确保代理切换生效
-            time.sleep(1)
+            time.sleep(0.5)
 
 
             # 验证代理是否真的切换了
@@ -379,6 +377,8 @@ class NetflixChecker:
 
         except Exception as e:
             self.logger.error(f"保存Clash订阅失败: {e}")
+
+
     def load_results(self) -> Optional[Dict]:
         """加载上次的检测结果"""
         try:

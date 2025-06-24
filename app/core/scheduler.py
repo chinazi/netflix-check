@@ -2,11 +2,10 @@
 定时任务调度模块
 """
 
-import time
 import threading
 from datetime import datetime
 from croniter import croniter
-from typing import Optional, Callable
+
 
 from app.core.logger import LoggerManager
 from app.core.config import Config

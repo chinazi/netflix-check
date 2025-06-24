@@ -6,13 +6,13 @@ import threading
 from flask_socketio import emit, join_room, leave_room, disconnect
 from flask import request
 from app.core.logger import LoggerManager
-from app.api.auth import verify_token  # 导入 token 验证函数
+from app.api.auth import verify_token
 
 logger = LoggerManager.get_logger()
 
 # WebSocket客户端管理
 connected_clients = set()
-authenticated_clients = set()  # 已认证的客户端
+authenticated_clients = set()
 log_push_thread = None
 stop_log_push = False
 
