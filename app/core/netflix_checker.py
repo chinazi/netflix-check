@@ -341,42 +341,57 @@ class NetflixChecker:
     def save_clash_subscription(self, results: List[Dict]):
         """保存完全解锁的节点为Clash订阅格式"""
         try:
+            # 确保目录存在
+            results_dir = '/app/results'
+            os.makedirs(results_dir, exist_ok=True)
+
+            # 读取原始配置文件
+            config_file = '/root/.config/mihomo/config.yaml'
+            with open(config_file, 'r', encoding='utf-8') as f:
+                clash_config = yaml.safe_load(f)
+
+            # 获取所有代理节点
+            all_proxies = clash_config.get('proxies', [])
+
+            # 创建一个字典方便查找
+            proxy_dict = {proxy['name']: proxy for proxy in all_proxies}
+
             # 只筛选完全解锁的节点
             unlocked_proxies = []
-
             for result in results:
-                if result['status'] == 'full':  # 只要完全解锁的
-                    # 复制原始代理配置
-                    proxy = result['proxy'].copy()
+                if result.get('status') == 'full':  # 只要完全解锁的
+                    original_name = result.get('name', '')
 
-                    # 修改节点名称，添加 -NF 后缀
-                    original_name = proxy.get('name', '')
-                    proxy['name'] = f"{original_name}-NF"
+                    # 从原始配置中查找完整的节点信息
+                    if original_name in proxy_dict:
+                        # 复制完整的节点配置
+                        full_proxy = proxy_dict[original_name].copy()
+                        # 修改节点名称，添加 -NF 后缀
+                        full_proxy['name'] = f"{original_name}-NF"
+                        unlocked_proxies.append(full_proxy)
+                    else:
+                        self.logger.warning(f"在原始配置中未找到节点: {original_name}")
 
-                    unlocked_proxies.append(proxy)
+            # 创建Clash订阅格式
+            clash_subscription = {
+                'proxies': unlocked_proxies
+            }
+
+            # 保存为YAML文件
+            clash_file = os.path.join(results_dir, 'netflix_unlocked_proxies.yaml')
+            with open(clash_file, 'w', encoding='utf-8') as f:
+                yaml.dump(clash_subscription, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
 
             if unlocked_proxies:
-                # 创建Clash订阅格式
-                clash_config = {
-                    'proxies': unlocked_proxies
-                }
-
-                # 保存为YAML文件
-                clash_file = os.path.join(self.results_dir, 'netflix_unlocked_proxies.yaml')
-                with open(clash_file, 'w', encoding='utf-8') as f:
-                    yaml.dump(clash_config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
-
                 self.logger.info(f"Clash订阅已保存到: {clash_file}")
                 self.logger.info(f"共保存 {len(unlocked_proxies)} 个完全解锁节点")
             else:
                 self.logger.warning("没有找到完全解锁的节点")
-                # 创建一个空的订阅文件
-                clash_file = os.path.join(self.results_dir, 'netflix_unlocked_proxies.yaml')
-                with open(clash_file, 'w', encoding='utf-8') as f:
-                    yaml.dump({'proxies': []}, f, allow_unicode=True)
 
         except Exception as e:
             self.logger.error(f"保存Clash订阅失败: {e}")
+            import traceback
+            self.logger.error(f"详细错误信息: {traceback.format_exc()}")
 
 
     def load_results(self) -> Optional[Dict]:
