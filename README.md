@@ -12,3 +12,11 @@
 - 📝 **实时日志** - WebSocket推送的实时日志输出
 - 🐳 **Docker支持** - 提供完整的Docker部署方案
 
+  docker run -d \
+  --name netflix-checker \
+  -p 8080:8080 \
+  -v ./config:/app/config \
+  -v ./logs:/app/logs \
+  -v ./results:/app/results \
+  tomcatvip/netflix-checker:latest
+
