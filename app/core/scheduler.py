@@ -104,7 +104,7 @@ class TaskScheduler:
 
         self._task_running = True
         start_time = datetime.now()
-
+        clash_manager = None
         try:
             self.logger.info(f"开始执行Netflix检查任务")
 
@@ -155,3 +155,5 @@ class TaskScheduler:
             self.logger.error(f"任务执行失败: {e}", exc_info=True)
         finally:
             self._task_running = False
+            if clash_manager is not None and self.config.get('auto_close', False):
+                clash_manager.cleanup()

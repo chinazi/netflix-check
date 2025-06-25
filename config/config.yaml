@@ -4,7 +4,7 @@ http_server:
   access_key: "test123"   # 登录密钥，请修改为安全的密钥
 
 subscription:
-  key: "your-key" #需要设置节点订阅密钥
+  key: "your-key" #需要设置节点订阅密钥 最终访问链接http://你的ip或域名/api/subscription?key=填入这个key
 
 # 定时任务配置
 schedule:
@@ -13,13 +13,15 @@ schedule:
 # Clash 配置（容器内部使用）
 clash:
   api_url: "http://127.0.0.1:9090"  # Clash API地址（容器内部）
-  secret: ""                        # Clash API密钥（如果启用了认证）
+  secret: ""                        # Clash API密钥
   proxy:
-    auth: false                     # 是否需要代理认证
+    auth: false                     # 是否需要代理认证 如果设置为true，需要设置用户和密码
     user: ""                        # 代理用户名
     pass: ""                        # 代理密码
     host: "127.0.0.1"              # 代理地址（容器内部）
     port: 7890                      # 代理端口（容器内部）
+  external_controller: 127.0.0.1 #默认只允许本机管理，如果想在外部管理设置为0.0.0.0:9090，此时建议设置clash.secret
+  auto_close: false #执行完任务是否关闭clash
 
 # Netflix 测试配置
 netflix:

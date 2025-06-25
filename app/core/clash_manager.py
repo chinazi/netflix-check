@@ -71,7 +71,7 @@ class LocalClashManager:
             'port': 7890,
             'socks-port': 7891,
             'mode': 'global',
-            'external-controller': '127.0.0.1:9090', #默认只允许本机管理，如果想在外部管理设置为0.0.0.0:9090
+            'external-controller':  self.config.get('clash.external_controller', '127.0.0.1'),
             'secret': self.config.get('clash.secret', ''),
             'dns': {
                 'enable': True,

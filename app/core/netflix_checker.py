@@ -234,12 +234,8 @@ class NetflixChecker:
     def check_current_ip(self) -> str:
         """检查当前使用的IP地址"""
         try:
-            proxies = {
-                'http': f'http://127.0.0.1:7890',
-                'https': f'http://127.0.0.1:7890'
-            }
             response = requests.get('http://ip-api.com/json',
-                                    proxies=proxies,
+                                    proxies=self.proxies,
                                     timeout=10)
             data = response.json()
             return f"{data.get('query')} ({data.get('country')})"
