@@ -71,7 +71,7 @@ class LocalClashManager:
             'port': 7890,
             'socks-port': 7891,
             'mode': 'global',
-            'external-controller':  self.config.get('clash.external_controller', '127.0.0.1:9090'),
+            'external-controller':  self.config.get('clash.external-controller', '127.0.0.1:9090'),
             'secret': self.config.get('clash.secret', ''),
             'dns': {
                 'enable': True,
