@@ -68,7 +68,6 @@ class TaskScheduler:
             self.logger.warning("任务正在执行中，请稍后再试")
             return False
 
-        # 在新线程中执行任务
         thread = threading.Thread(target=self._execute_task, name="ImmediateTask")
         thread.daemon = True
         thread.start()
@@ -81,24 +80,20 @@ class TaskScheduler:
 
         while self._running:
             try:
-                # 计算下次执行时间
                 cron = croniter(cron_expr, datetime.now())
                 next_run = cron.get_next(datetime)
                 wait_seconds = (next_run - datetime.now()).total_seconds()
 
                 self.logger.info(f"下次执行时间: {next_run.strftime('%Y-%m-%d %H:%M:%S')}")
 
-                # 等待到执行时间或被中断
                 if self._stop_event.wait(timeout=wait_seconds):
                     break
 
-                # 执行任务
                 if self._running:
                     self._execute_task()
 
             except Exception as e:
                 self.logger.error(f"调度器错误: {e}", exc_info=True)
-                # 出错后等待一段时间
                 self._stop_event.wait(timeout=300)
 
     def _execute_task(self):
@@ -113,11 +108,9 @@ class TaskScheduler:
         try:
             self.logger.info(f"开始执行Netflix检查任务")
 
-            # 创建管理器实例
             clash_manager = LocalClashManager(self.config)
             checker = NetflixChecker(self.config)
 
-            # 下载并合并配置
             urls = self.config.get('proxy_config_urls', [])
             if not urls:
                 self.logger.error("没有配置代理URL")
@@ -137,13 +130,10 @@ class TaskScheduler:
                 self.logger.error("Clash重启失败")
                 return
 
-            # 测试所有代理
             results = checker.check_all_proxies(all_proxies)
 
-            # 保存结果
             checker.save_results(results)
 
-            # 统计结果
             total = len(results)
             unlocked = sum(1 for r in results if r['status'] == 'full')
             partial = sum(1 for r in results if r['status'] == 'partial')
@@ -158,7 +148,6 @@ class TaskScheduler:
                 f"失败: {failed}"
             )
 
-            # 计算耗时
             duration = (datetime.now() - start_time).total_seconds()
             self.logger.info(f"任务执行完成，耗时: {duration:.2f}秒")
 

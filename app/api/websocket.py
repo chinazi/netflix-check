@@ -10,7 +10,6 @@ from app.api.auth import verify_token
 
 logger = LoggerManager.get_logger()
 
-# WebSocket客户端管理
 connected_clients = set()
 authenticated_clients = set()
 log_push_thread = None
@@ -29,13 +28,11 @@ def setup_websocket(socketio):
         if auth and isinstance(auth, dict):
             token = auth.get('token')
             if token and verify_token(token):
-                # 认证成功
                 connected_clients.add(client_id)
                 authenticated_clients.add(client_id)
                 logger.info(f"WebSocket客户端连接并认证成功: {client_id}")
                 emit('connected', {'message': '已连接到日志推送服务', 'authenticated': True})
 
-                # 启动日志推送线程
                 global log_push_thread, stop_log_push
                 if not log_push_thread or not log_push_thread.is_alive():
                     stop_log_push = False
@@ -43,16 +40,14 @@ def setup_websocket(socketio):
                     log_push_thread.daemon = True
                     log_push_thread.start()
             else:
-                # 认证失败
                 logger.warning(f"WebSocket客户端认证失败: {client_id}")
                 emit('error', {'message': '认证失败'})
-                disconnect()  # 断开连接
+                disconnect()
                 return False
         else:
-            # 没有提供认证信息
             logger.warning(f"WebSocket客户端未提供认证信息: {client_id}")
             emit('error', {'message': '需要认证'})
-            disconnect()  # 断开连接
+            disconnect()
             return False
 
     @socketio.on('disconnect')
@@ -63,7 +58,6 @@ def setup_websocket(socketio):
         authenticated_clients.discard(client_id)
         logger.info(f"WebSocket客户端断开: {client_id}")
 
-        # 如果没有客户端连接，停止日志推送
         if not connected_clients:
             global stop_log_push
             stop_log_push = True
@@ -73,7 +67,6 @@ def setup_websocket(socketio):
         """加入日志房间"""
         client_id = request.sid
 
-        # 检查是否已认证
         if client_id not in authenticated_clients:
             emit('error', {'message': '未认证'})
             return
@@ -90,7 +83,6 @@ def setup_websocket(socketio):
         """离开日志房间"""
         client_id = request.sid
 
-        # 检查是否已认证
         if client_id not in authenticated_clients:
             return
 
@@ -104,22 +96,19 @@ def push_logs(socketio):
 
     while not stop_log_push:
         try:
-            # 检查是否有新日志
             current_logs = LoggerManager.get_logs()
             current_count = len(current_logs)
 
             if current_count > last_log_count:
-                # 获取新日志
                 new_logs = current_logs[last_log_count:]
 
-                # 只推送给已认证的客户端
                 socketio.emit('new_logs', {
                     'logs': new_logs
                 }, room='logs', skip_sid=[sid for sid in connected_clients if sid not in authenticated_clients])
 
                 last_log_count = current_count
 
-            time.sleep(1)  # 每秒检查一次
+            time.sleep(1)
 
         except Exception as e:
             logger.error(f"推送日志错误: {e}")

@@ -170,12 +170,12 @@ class NetflixChecker:
 
 
             # 验证代理是否真的切换了
-            current_proxy = self.clash_manager.get_current_proxy()
-            self.logger.info(f"当前代理: {current_proxy}")
+            # current_proxy = self.clash_manager.get_current_proxy()
+            # self.logger.info(f"当前代理: {current_proxy}")
 
             current_ip = self.check_current_ip()
             self.logger.info(f"当前IP: {current_ip}")
-            # 测试所有URL
+
             test_results = []
             regions_found = []
 

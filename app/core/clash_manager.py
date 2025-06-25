@@ -34,7 +34,6 @@ class LocalClashManager:
         all_proxies = []
         configs = []
 
-        # 下载所有配置
         for i, url in enumerate(urls):
             self.logger.info(f"下载配置 {i + 1}/{len(urls)}: {url}")
             try:
@@ -44,7 +43,6 @@ class LocalClashManager:
                 config_data = yaml.safe_load(response.text)
                 configs.append(config_data)
 
-                # 提取代理
                 if 'proxies' in config_data:
                     proxies = config_data['proxies']
                     all_proxies.extend(proxies)
@@ -58,10 +56,8 @@ class LocalClashManager:
             self.logger.error("没有成功下载任何配置")
             return None, []
 
-        # 合并配置
         merged_config = self._merge_configs(configs, all_proxies)
 
-        # 保存合并后的配置到Clash配置目录
         self.clash_config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.clash_config_path, 'w', encoding='utf-8') as f:
             yaml.dump(merged_config, f, allow_unicode=True, sort_keys=False)
@@ -75,7 +71,7 @@ class LocalClashManager:
             'port': 7890,
             'socks-port': 7891,
             'mode': 'global',
-            'external-controller': '127.0.0.1:9090',
+            'external-controller': '127.0.0.1:9090', #默认只允许本机管理，如果想在外部管理设置为0.0.0.0:9090
             'secret': self.config.get('clash.secret', ''),
             'dns': {
                 'enable': True,
@@ -102,7 +98,6 @@ class LocalClashManager:
             }
         }
 
-        # 如果配置了认证
         proxy_config = self.config.get('clash.proxy', {})
         if proxy_config.get('auth'):
             merged['authentication'] = [
@@ -112,19 +107,15 @@ class LocalClashManager:
         # 设置代理列表
         merged['proxies'] = all_proxies
 
-        # 从第一个配置复制 proxy-groups 和 rules（如果存在）
         if configs:
             base_config = configs[0]
 
-            # 保留原有的 proxy-groups
             if 'proxy-groups' in base_config:
                 merged['proxy-groups'] = base_config['proxy-groups']
 
-            # 保留原有的规则
             if 'rules' in base_config:
                 merged['rules'] = base_config['rules']
 
-            # 保留其他可能需要的配置
             for key in ['rule-providers', 'hosts', 'tun', 'profile', 'experimental']:
                 if key in base_config:
                     merged[key] = base_config[key]
@@ -135,35 +126,27 @@ class LocalClashManager:
     def start_clash(self) -> bool:
         """启动Clash进程"""
         try:
-            # 检查Clash是否已经在运行
             if self._check_clash_running():
                 self.logger.info("Clash已经在运行")
                 return True
 
-            # 确保配置文件存在
             if not self.clash_config_path.exists():
                 self.logger.error(f"配置文件不存在: {self.clash_config_path}")
                 return False
-            # 启动Clash
+
             cmd = f'nohup /usr/local/bin/clash -d /root/.config/mihomo > /root/.config/mihomo/clash.log 2>&1 &'
             self.logger.info(f"启动Clash: {cmd}")
 
-            # 执行命令
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
-            # 检查命令是否执行成功
             if result.returncode != 0:
                 self.logger.error(f"执行启动命令失败: {result.stderr}")
                 return False
 
-            # 等待 Clash 启动
             time.sleep(3)
 
-            # 不能通过 poll() 检查，因为 shell 进程已经结束
-            # 直接检查 Clash 是否在运行
             if self._check_clash_running():
                 self.logger.info("Clash启动成功")
-                # 获取实际的 clash PID
                 try:
                     pid_result = subprocess.run("pgrep -f '/usr/local/bin/clash -d'",
                                                 shell=True, capture_output=True, text=True)
@@ -175,7 +158,6 @@ class LocalClashManager:
                 return True
             else:
                 self.logger.error("Clash启动后API不可访问")
-                # 检查日志文件
                 try:
                     with open('/root/.config/mihomo/clash.log', 'r') as f:
                         last_lines = f.readlines()[-20:]  # 读取最后20行
@@ -192,12 +174,10 @@ class LocalClashManager:
     def stop_clash(self) -> bool:
         """停止Clash进程"""
         try:
-            # 如果有进程引用，尝试正常终止
             if self.clash_process:
                 self.logger.info("正在停止Clash进程...")
                 self.clash_process.terminate()
 
-                # 等待进程结束
                 try:
                     self.clash_process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
@@ -208,9 +188,7 @@ class LocalClashManager:
 
                 self.clash_process = None
 
-            # 确保所有Clash进程都被终止
             try:
-                # 查找所有clash进程
                 result = subprocess.run(
                     ['pgrep', '-f', 'clash'],
                     capture_output=True,
@@ -239,17 +217,14 @@ class LocalClashManager:
     def restart_clash(self, config_path: str = None) -> bool:
         """重启Clash"""
         try:
-            # 如果提供了新配置路径，更新配置
             if config_path and config_path != str(self.clash_config_path):
                 import shutil
                 shutil.copy2(config_path, self.clash_config_path)
                 self.logger.info(f"已更新配置文件: {self.clash_config_path}")
 
-            # 停止现有进程
             self.stop_clash()
             time.sleep(2)
 
-            # 启动新进程
             return self.start_clash()
 
         except Exception as e:
@@ -298,7 +273,6 @@ class LocalClashManager:
     def get_current_proxy(self) -> Optional[str]:
         """获取当前使用的代理"""
         try:
-            # 查找当前的选择器
             selector = self._find_selector()
             if not selector:
                 return None
@@ -322,19 +296,16 @@ class LocalClashManager:
             data = resp.json()
             proxies = data.get('proxies', {})
 
-            # 查找Selector类型的代理组
             selectors = []
             for name, info in proxies.items():
                 if info.get('type') == 'Selector' and 'all' in info:
                     selectors.append(name)
 
-            # 优先返回常见的选择器名称
             common_names = ['GLOBAL']
             for name in common_names:
                 if name in selectors:
                     return name
 
-            # 返回第一个找到的选择器
             return selectors[0] if selectors else None
 
         except Exception as e:
@@ -345,8 +316,6 @@ class LocalClashManager:
         """获取Clash日志"""
         try:
             if self.clash_process:
-                # 从进程输出读取日志
-                # 这里需要更复杂的实现来非阻塞读取
                 return ["Clash正在运行"]
             else:
                 return ["Clash未运行"]

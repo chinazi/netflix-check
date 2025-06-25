@@ -74,10 +74,8 @@ def setup_logger(name: str = "netflix_checker",
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
 
-    # 清除已有的处理器
     logger.handlers.clear()
 
-    # 格式化器
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
@@ -89,7 +87,6 @@ def setup_logger(name: str = "netflix_checker",
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
-    # 文件处理器
     if log_file is None:
         log_dir = "logs"
         os.makedirs(log_dir, exist_ok=True)
@@ -105,7 +102,6 @@ def setup_logger(name: str = "netflix_checker",
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
-    # 缓冲处理器
     buffer_handler = BufferedLogHandler()
     buffer_handler.setLevel(logging.INFO)
     buffer_handler.setFormatter(formatter)

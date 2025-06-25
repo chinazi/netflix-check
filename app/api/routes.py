@@ -251,8 +251,6 @@ def get_version():
             'app_version': '1.0.0',
             'mihomo_info': None
         }
-
-        # 读取mihomo版本信息
         version_file = '/app/version.txt'
         if os.path.exists(version_file):
             with open(version_file, 'r') as f:
@@ -268,7 +266,6 @@ def get_version():
         return jsonify({'error': '获取版本信息失败'}), 500
 
 
-# 设置调度器实例
 def set_scheduler(sched):
     """设置调度器实例"""
     global scheduler
@@ -284,21 +281,17 @@ def get_netflix_subscription():
         config = Config()
         correct_key = config.get('subscription.key', '')
 
-        # 如果配置中没有设置密钥，记录警告
         if not correct_key:
             logger.warning("订阅密钥未在配置文件中设置")
             return jsonify({'error': '订阅服务未配置'}), 503
 
-        # 验证密钥
         if subscription_key != correct_key:
             logger.warning(f"订阅密钥错误: {subscription_key}")
             return jsonify({'error': '无效的订阅密钥'}), 401
 
-        # 检查订阅文件是否存在
         subscription_file = "results/netflix_unlocked_proxies.yaml"
         if not os.path.exists(subscription_file):
             logger.info("订阅文件不存在，返回空订阅")
-            # 返回空的代理列表
             empty_subscription = {
                 'proxies': []
             }
@@ -308,7 +301,6 @@ def get_netflix_subscription():
                 'Content-Disposition': 'inline; filename="netflix_proxies.yaml"'
             }
 
-        # 读取并返回订阅文件
         with open(subscription_file, 'r', encoding='utf-8') as f:
             content = f.read()
 

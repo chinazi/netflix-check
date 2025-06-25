@@ -24,7 +24,6 @@ class Config:
         return cls._instance
 
     def __init__(self):
-        # 避免重复初始化
         if Config._initialized:
             return
 
@@ -38,7 +37,6 @@ class Config:
             self._config = {}
             self._config_lock = Lock()
 
-            # 加载配置
             self.load_config()
 
             Config._initialized = True
@@ -49,9 +47,7 @@ class Config:
         try:
             print(f"[Config] 尝试加载配置文件: {self.config_file}")
 
-            # 获取配置文件的绝对路径
             if not os.path.isabs(self.config_file):
-                # 如果是相对路径，相对于项目根目录
                 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                 self.config_file = os.path.join(project_root, self.config_file)
 
@@ -65,7 +61,6 @@ class Config:
             else:
                 print(f"[Config] 配置文件不存在，使用默认配置")
                 self._config = self._get_default_config()
-                # 创建目录并保存默认配置
                 os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
                 self.save_config()
                 return True
@@ -124,7 +119,6 @@ class Config:
                         config[k] = {}
                     config = config[k]
 
-                # 设置值
                 config[keys[-1]] = value
                 return self.save_config()
         except Exception as e:
