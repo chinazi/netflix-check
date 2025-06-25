@@ -73,6 +73,7 @@ class LocalClashManager:
             'mode': 'global',
             'external-controller':  self.config.get('clash.external-controller', '127.0.0.1:9090'),
             'secret': self.config.get('clash.secret', ''),
+            'allow-lan': self.config.get('clash.allow-lan', False),
             'dns': {
                 'enable': True,
                 'enhanced-mode': 'fake-ip',

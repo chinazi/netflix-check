@@ -22,6 +22,7 @@ clash:
     port: 7890                      # 代理端口（容器内部）
   external-controller: "127.0.0.1:9090" #默认只允许本机管理，如果想在外部管理设置为0.0.0.0:9090，此时建议设置clash.secret
   auto_close: false #执行完任务是否关闭clash
+  allow-lan: false # 局域网访问代理开关
 
 # Netflix 测试配置
 netflix:
