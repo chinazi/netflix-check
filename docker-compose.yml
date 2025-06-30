@@ -13,8 +13,6 @@ services:
       - "8080:8080"
     volumes:
       - ./config:/app/config
-      - ./logs:/app/logs
-      - ./results:/app/results
       - ./clash-config:/root/.config/mihomo  # Clash配置目录
     environment:
       - CONFIG_FILE=/app/config/config.yaml
